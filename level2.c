@@ -4,20 +4,19 @@
 #include <string.h>
 #include <errno.h>
 
-#define MAX_STR_NUM 18 + 1
+#define MAX_STR_NUM 19
 #define PERMISSION 0644 /* rw-r--r-- */
-#define OFFSET_ZERO 0
 
 int main(void) {
     int fd;
-    int ret = 0;
+    ssize_t ret = 0;
     size_t buf_size;
     char w_buf[MAX_STR_NUM] = "Hello Driver World";
     char r_buf[MAX_STR_NUM];
 
     memset(r_buf, 0, MAX_STR_NUM);
 
-    fd = open("test.txt", O_CREAT | O_RDWR, PERMISSION);
+    fd = open("test.txt", O_CREAT | O_RDWR | O_TRUNC, PERMISSION);
     if (fd == -1) {
         printf("ERR file not opened. errno[%d]\n", errno);
         return 0;
@@ -32,18 +31,19 @@ int main(void) {
 
     printf("write success\n");
 
-    ret = lseek(fd, OFFSET_ZERO, SEEK_SET);
+    /* ファイルポインタを先頭に戻す */
+    ret = lseek(fd, 0, SEEK_SET);
     if (ret == -1) {
         printf("ERR lseek failed. errno[%d]\n", errno);
         goto end;
     }
 
-    ret = read(fd, r_buf, MAX_STR_NUM);
+    ret = read(fd, r_buf, MAX_STR_NUM - 1);
     if (ret == -1) {
         printf("ERR read failed. errno[%d]\n", errno);
         goto end;
     }
-    r_buf[MAX_STR_NUM] = '\0';
+    r_buf[ret] = '\0';
 
     printf("read result: %s\n", r_buf);
 
