@@ -50,51 +50,30 @@ void rb_init(struct ring_buffer *rb) {
 int rb_write(struct ring_buffer *rb, const char *data, int size) {
     int i = 0;
 
-    if (size > BUFF_SIZE) {
-        printf("write size over\n");
-        return -1;
-    }
-
     for (i = 0; i != size; i++) {
-        if (rb->head == BUFF_SIZE) { /* rb->bufferの終端に達した際 */
-            if (rb->buffer[0] == '\0') { /*  先頭に値が格納されていない場合は、処理を続行 */
-                rb->head = 0;
-            }
-            else { /*  先頭に値が格納されている場合は、処理を終了 */
-                printf("ring buffer is full\n");
-                return -1;
-            }
+        if (rb->head == rb->tail) {
+            printf("ring buffer is full\n");
+            return -1;
         }
         rb->buffer[rb->head] = data[i];
-        rb->head++;
+        rb->head = (rb->head++) % BUFF_SIZE; /* headを1つ進め、末尾なら先頭に戻す（リング状にインクリメント） */
     }
 
-    return 0;
+    return i;
 }
 
 int rb_read(struct ring_buffer *rb, char *buf, int size) {
     int i = 0;
 
-    if (size > BUFF_SIZE) {
-        printf("read size over\n");
-        return -1;
-    }
-
     for (i = 0; i != size; i++) {
-        if (rb->tail == BUFF_SIZE) { /* rb->bufferの終端に達した際 */
-            if (rb->buffer[0] != '\0') { /* 先頭に値が格納されている場合は、処理を続行 */
-                rb->tail = 0;
-            }
-            else { /* 先頭に値が格納されていない場合は、処理を終了 */
-                printf("ring buffer is empty\n");
-                return -1;
-            }
+        if (rb->tail == rb->head) {
+            printf("ring buffer is empty\n");
+            return -1;
         }
         buf[i] = rb->buffer[rb->tail];
-        rb->buffer[rb->tail] = '\0';
-        rb->tail++;
+        rb->tail = (rb->tail++) % BUFF_SIZE; /* tailを1つ進め、末尾なら先頭に戻す（リング状にインクリメント） */
     }
 
     buf[i] = '\0';
-    return 0;
+    return i;
 }
