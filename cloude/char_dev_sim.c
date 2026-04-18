@@ -10,6 +10,7 @@
 int main(void) {
     int fd;
     ssize_t ret = 0;
+    off_t ret_lseek = 0;
     size_t buf_size;
     char w_buf[MAX_STR_NUM];
     char r_buf[MAX_STR_NUM];
@@ -28,6 +29,7 @@ int main(void) {
         printf("ERR fgets failed.\n");
         goto end;
     }
+    w_buf[strcspn(w_buf, "\n")] = '\0'; /* 終端の改行文字を削除 */
 
     buf_size = strnlen(w_buf, MAX_STR_NUM);
     ret = write(fd, w_buf, buf_size);
@@ -39,8 +41,8 @@ int main(void) {
     printf("[write] %ld bytes written\n", ret);
 
     /* ファイルポインタを先頭に戻す */
-    ret = lseek(fd, 0, SEEK_SET);
-    if (ret == -1) {
+    ret_lseek = lseek(fd, 0, SEEK_SET);
+    if (ret_lseek == -1) {
         printf("ERR lseek failed. errno[%d]\n", errno);
         goto end;
     }
