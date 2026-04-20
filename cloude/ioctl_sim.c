@@ -37,11 +37,11 @@ int main(void) {
     fd = open("test.txt", O_CREAT | O_RDWR | O_TRUNC, PERMISSION);
     if (fd == -1) {
         printf("ERR file not opened. errno[%d]\n", errno);
-        return 0;
+        goto end;
     }
 
-    printf("DEV_IOC_SET command = 0x%08lX\n", DEV_IOC_SET);
-    printf("DEV_IOC_GET command = 0x%08lX\n", DEV_IOC_GET);
+    printf("DEV_IOC_SET command = 0x%08lX\n", (unsigned long)DEV_IOC_SET);
+    printf("DEV_IOC_GET command = 0x%08lX\n", (unsigned long)DEV_IOC_GET);
 
     w_config = (dev_config_t){BOUND_115200, TIMEOUT_500, MODE_UART};
 
@@ -65,7 +65,7 @@ int main(void) {
         printf("ERR read failed. errno[%d]\n", errno);
         goto end;
     }
-    printf("[SET] baud_rate=%d timeout_ms=%d mode=%s\n", r_config.baud_rate, r_config.timeout_ms, r_config.mode);
+    printf("[GET] baud_rate=%d timeout_ms=%d mode=%s\n", r_config.baud_rate, r_config.timeout_ms, r_config.mode);
 
     /* DEV_IOC_SETÇ≈ê›íËÇµÇΩì‡óeÇDEV_IOC_GETÇ≈éÊìæÇµÇƒÇ¢ÇÈÇ©ämîF */
     if ((memcmp(&w_config, &r_config, sizeof(w_config)) != 0)) {
@@ -74,6 +74,8 @@ int main(void) {
     printf("[verify] config match: %s\n", config_match);
 
 end:
-    close(fd);
+    if (fd != -1) {
+        close(fd);
+    }
     return 0;
 }
