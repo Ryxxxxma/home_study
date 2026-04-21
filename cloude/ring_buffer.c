@@ -18,6 +18,9 @@ typedef struct {
     pthread_mutex_t lock;               /* 排他制御       */
 } ring_buf_t;
 
+static int ret_ok = 0;
+static int ret_err = -1;
+
 void* write_thread_func(void* arg);
 void* read_thread_func(void* arg);
 
@@ -54,9 +57,6 @@ int main(void) {
     }
 
 end:
-    if (mtx_ret == 0) {
-        pthread_mutex_destroy(&ring_buf.lock);
-    }
     if (w_ret == 0) {
         pthread_join(w_thread, &w_thread_ret);
     }
@@ -64,10 +64,14 @@ end:
         pthread_join(r_thread, &r_thread_ret);
     }
 
+    if (mtx_ret == 0) {
+        pthread_mutex_destroy(&ring_buf.lock);
+    }
+
     if ((w_ret == 0) &&
         (r_ret == 0) &&
-        ((long)w_thread_ret == 0) &&
-        ((long)r_thread_ret == 0)) {
+        (*(int *)w_thread_ret == 0) &&
+        (*(int *)r_thread_ret == 0)) {
         printf("[main]   all done.\n");
     }
 
@@ -84,16 +88,20 @@ void* write_thread_func(void* arg) {
     ts.tv_nsec = 1000000; /* 1ms = 1000,000ns */
 
     for (i = 0; i < RING_BUF_MAX_WRITE; i++) {
-        while (w_ring_buf->count == RING_BUF_SIZE - 1) { /* bufが満杯なら1ms待機 */
+        sleep_count = 0;
+
+        pthread_mutex_lock(&w_ring_buf->lock);
+        while (w_ring_buf->count == RING_BUF_SIZE) { /* bufが満杯なら1ms待機 */
+            pthread_mutex_unlock(&w_ring_buf->lock);
             nanosleep(&ts, NULL);
             sleep_count++;
             if (sleep_count == MAX_SLEEP_COUNT) { /* sleep_countがMAX_SLEEP_COUNT超えた場合、処理を終了 */
                 printf("ERR write sleep max count over.\n");
-                return (void *)-1;
+                return (void *)&ret_err;
             }
+            pthread_mutex_lock(&w_ring_buf->lock);
         }
 
-        pthread_mutex_lock(&w_ring_buf->lock);
         w_ring_buf->buf[w_ring_buf->tail] = i;
         printf("[writer] write: %d\n", i);
         w_ring_buf->tail = (w_ring_buf->tail + 1) % RING_BUF_SIZE;  /* tailを1つ進め、末尾なら先頭に戻す（リング状にインクリメント） */
@@ -101,7 +109,7 @@ void* write_thread_func(void* arg) {
         pthread_mutex_unlock(&w_ring_buf->lock);
     }
 
-    return 0;
+    return (void *)&ret_ok;
 }
 
 void* read_thread_func(void* arg) {
@@ -115,16 +123,20 @@ void* read_thread_func(void* arg) {
     ts.tv_nsec = 1000000; /* 1ms = 1000,000ns */
 
     for (i = 0; i < RING_BUF_MAX_WRITE; i++) {
+        sleep_count = 0;
+
+        pthread_mutex_lock(&r_ring_buf->lock);
         while (r_ring_buf->count == 0) { /* bufが空なら1ms待機 */
+            pthread_mutex_unlock(&r_ring_buf->lock);
             nanosleep(&ts, NULL);
             sleep_count++;
             if (sleep_count == MAX_SLEEP_COUNT) { /* sleep_countがMAX_SLEEP_COUNT超えた場合、処理を終了 */
                 printf("ERR read sleep max count over.\n");
-                return (void *)-1;
+                return (void *)&ret_err;
             }
+            pthread_mutex_lock(&r_ring_buf->lock);
         }
 
-        pthread_mutex_lock(&r_ring_buf->lock);
         r_num = r_ring_buf->buf[r_ring_buf->head];
         printf("[reader] read: %d\n", r_num);
         r_ring_buf->head = (r_ring_buf->head + 1) % RING_BUF_SIZE;  /* headを1つ進め、末尾なら先頭に戻す（リング状にインクリメント） */
@@ -132,5 +144,5 @@ void* read_thread_func(void* arg) {
         pthread_mutex_unlock(&r_ring_buf->lock);
     }
 
-    return 0;
+    return (void *)&ret_ok;
 }
