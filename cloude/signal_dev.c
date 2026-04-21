@@ -4,7 +4,6 @@
 #include <string.h>
 #include <errno.h>
 #include <signal.h>
-#include <stdatomic.h>
 #include <pthread.h>
 #include <time.h>
 
@@ -119,6 +118,11 @@ void* write_thread_func(void* arg) {
         pthread_mutex_lock(&w_ring_buf->lock);
         while (w_ring_buf->count == RING_BUF_SIZE) { /* bufが満杯なら1ms待機 */
             pthread_mutex_unlock(&w_ring_buf->lock);
+
+            if (g_running == 0) { /* ハンドラが動いた場合、処理を終了 */
+                return (void *)&ret_ok;
+            }
+
             nanosleep(&ts, NULL);
             sleep_count++;
             if (sleep_count == MAX_SLEEP_COUNT) { /* sleep_countがMAX_SLEEP_COUNT超えた場合、処理を終了 */
@@ -154,6 +158,11 @@ void* read_thread_func(void* arg) {
         pthread_mutex_lock(&r_ring_buf->lock);
         while (r_ring_buf->count == 0) { /* bufが空なら1ms待機 */
             pthread_mutex_unlock(&r_ring_buf->lock);
+
+            if (g_running == 0) { /* ハンドラが動いた場合、処理を終了 */
+                return (void *)&ret_ok;
+            }
+
             nanosleep(&ts, NULL);
             sleep_count++;
             if (sleep_count == MAX_SLEEP_COUNT) { /* sleep_countがMAX_SLEEP_COUNT超えた場合、処理を終了 */
