@@ -19,16 +19,18 @@ typedef struct {
     sem_t    sem_read;                      /* 読み出し完了通知   */
 } shm_data_t;
 
-int main() {
+int main(void) {
     int i = 0;
     int shm_fd = -1;
-    shm_data_t *shm_ptr = NULL;
+    shm_data_t *shm_ptr = MAP_FAILED;
 
     shm_fd = shm_open(SHM_NAME, O_RDWR, SHM_PERMISSION);
     if (shm_fd == -1) {
         printf("ERR shm open failed. errno[%d]\n", errno);
         goto end;
     }
+
+    /* ftruncate()はwriter側で実施済みのため、reader側では不要 */
 
     shm_ptr = (shm_data_t *)mmap(NULL, sizeof(shm_data_t), PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
     if (shm_ptr == MAP_FAILED) {

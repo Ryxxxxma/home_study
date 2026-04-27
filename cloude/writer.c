@@ -19,11 +19,11 @@ typedef struct {
     sem_t    sem_read;                      /* 読み出し完了通知   */
 } shm_data_t;
 
-int main() {
+int main(void) {
     int i = 0;
     int ret = -1;
     int shm_fd = -1;
-    shm_data_t *shm_ptr = NULL;
+    shm_data_t *shm_ptr = MAP_FAILED;
 
     shm_fd = shm_open(SHM_NAME, O_CREAT | O_RDWR, SHM_PERMISSION);
     if (shm_fd == -1) {
@@ -31,6 +31,7 @@ int main() {
         goto end;
     }
 
+    /* shm_openで作成直後はshm_fdのサイズは0のため、mmapの前にサイズを確保する */
     ret = ftruncate(shm_fd, sizeof(shm_data_t));
     if (ret == -1) {
         printf("ERR ftruncate failed. errno[%d]\n", errno);
@@ -44,12 +45,12 @@ int main() {
     }
 
     memset(shm_ptr, 0, sizeof(shm_data_t));
-    sem_init(&shm_ptr->sem_written, 1, 0); /* 最初はデータがないため、readerを待機させる */
-    sem_init(&shm_ptr->sem_read, 1, 1); /* 最初はバッファが空なので、writerが即座に書き込める状態にする */
+    sem_init(&shm_ptr->sem_written, 1, 0); /* 初期値0 = writerの書き込みが完了するまで、最初の読み込みを待機する */
+    sem_init(&shm_ptr->sem_read, 1, 1);    /* 初期値1 = 最初の書き込みはreaderの完了を待たずに即開始できる */
 
     for (i = 0; i < SHM_MSG_NUM; i++) {
         sem_wait(&shm_ptr->sem_read); /* readerがデータを読み込むまで待機 */
-        sprintf(shm_ptr->msg[i], "msg_%d", i);
+        snprintf(shm_ptr->msg[i], SHM_MSG_MAX, "msg_%d", i);
         shm_ptr->count++;
         printf("[writer] wrote: %s\n", shm_ptr->msg[i]);
         sem_post(&shm_ptr->sem_written);
@@ -66,9 +67,8 @@ end:
 
     if (shm_fd != -1) {
         close(shm_fd);
+        shm_unlink(SHM_NAME);
     }
-
-    shm_unlink(SHM_NAME);
 
     return 0;
 }
