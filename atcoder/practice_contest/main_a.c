@@ -3,7 +3,7 @@
 #include <unistd.h>
 #include <string.h>
 
-#define MAX_STRING_LEN 100
+#define MAX_STRING_LEN 100 + 1 /* Å‘å“ü—Í•¶š”100 + I’[•¶š */
 #define INPUT_COUNT_ONE 1
 #define INPUT_COUNT_TWO 2
 
