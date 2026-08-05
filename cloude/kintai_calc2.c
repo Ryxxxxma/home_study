@@ -70,11 +70,17 @@ end:
 }
 
 Employee *create_employee_list(int size) {
+    int i = 0;
     Employee *list = NULL;
 
     list = (Employee *)malloc(size * sizeof(Employee));
     if (list == NULL) {
         printf("[ERROR] [%s:%d] malloc() failed\n", __func__, __LINE__);
+        return list;
+    }
+
+    for (i = 0; i < size; i++) {
+        list[i].name = NULL; /* set_employeeでの再設定判定に備え、未初期化状態を排除 */
     }
 
     return list;
@@ -88,11 +94,12 @@ int set_employee(Employee *e, const char *name, int work_days, int late_count) {
         printf("[ERROR] [%s:%d] argument \"e\" is NULL\n", __func__, __LINE__);
         return ret;
     }
-    if (e->name != NULL) {
-        free(e->name); /* 既に何か割り当てられている場合は一度 free する（メモリリーク防止) */
-    }
     if (name == NULL) {
         printf("[ERROR] [%s:%d] argument \"name\" is NULL\n", __func__, __LINE__);
+        return ret;
+    }
+    if (name[0] == '\0') {
+        printf("[ERROR] [%s:%d] argument \"name\" is empty string\n", __func__, __LINE__);
         return ret;
     }
     if (work_days <= 0) {
@@ -103,9 +110,17 @@ int set_employee(Employee *e, const char *name, int work_days, int late_count) {
         printf("[ERROR] [%s:%d] argument \"late_count\" is %d\n", __func__, __LINE__, late_count);
         return ret;
     }
+    if (e->name != NULL) {
+        free(e->name); /* 既に何か割り当てられている場合は一度 free する（メモリリーク防止) */
+        e->name = NULL;
+    }
 
     malloc_size = strlen(name) + 1; /* nameの文字数 + ヌル文字のサイズを計算 */
     e->name = (char *)malloc(malloc_size);
+    if (e->name == NULL) {
+        printf("[ERROR] [%s:%d] malloc() failed\n", __func__, __LINE__);
+        return ret;
+    }
 
     ret = snprintf(e->name, malloc_size, "%s", name);
     if (ret < 0) {
